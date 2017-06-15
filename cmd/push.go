@@ -21,10 +21,15 @@ import (
 	"github.com/shirou/gopsutil/process"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"io/ioutil"
 	"os"
+	"reflect"
+	"strconv"
+	"strings"
 )
 
 var DryRun bool
+var PidFile string
 
 var command = func(cmd *cobra.Command, args []string) (err error) {
 	if len(args) < 1 {
@@ -38,30 +43,50 @@ var command = func(cmd *cobra.Command, args []string) (err error) {
 
 	if err != nil {
 		log.Error("cannot read pids", err.Error())
+		os.Exit(1)
 	}
-
-	procNames := []string{}
-
-	for _, pid := range pids {
-		proc := process.Process{
-			Pid: pid,
-		}
-
-		procName, err := proc.Name()
-		if err != nil {
-			log.Error("error getting name", err.Error())
-		}
-		procNames = append(procNames, procName)
-	}
-
-	log.Info("there are ", len(procNames), " processes running")
 	processToMonitor := args[0]
-	if len(intersect(procNames, []string{processToMonitor})) > 0 {
-		log.Info(processToMonitor, " is running")
-		pushMetric(processToMonitor, 1)
+	log.Info("there are ", len(pids), " processes running")
+
+	if PidFile != "" {
+		bytes, err := ioutil.ReadFile(PidFile)
+		if err != nil {
+			log.Error("cannot read file: ", err.Error())
+			os.Exit(1)
+		}
+		pid, err := strconv.ParseInt(strings.Trim(string(bytes), "\n"), 10, 32)
+
+		if err != nil {
+			log.Error("cannot parse PID from file ", err.Error())
+			os.Exit(1)
+		}
+		log.Info("looking for PID=", pid)
+		if contains(pids, int32(pid)) {
+			log.Info(processToMonitor, " is running")
+			pushMetric(processToMonitor, 1)
+		} else {
+			log.Info("PID=", pid, " not found")
+			log.Info("found these PIDs=", pids)
+			log.Error(processToMonitor, " is not running")
+		}
 	} else {
-		log.Error(processToMonitor, " is not running")
+		procNames := []string{}
+		for _, pid := range pids {
+			proc := process.Process{Pid: pid}
+			procName, err := proc.Name()
+			if err != nil {
+				log.Error("error getting name", err.Error())
+			}
+			procNames = append(procNames, procName)
+		}
+		if len(intersect(procNames, []string{processToMonitor})) > 0 {
+			log.Info(processToMonitor, " is running")
+			pushMetric(processToMonitor, 1)
+		} else {
+			log.Error(processToMonitor, " is not running")
+		}
 	}
+
 	return
 }
 
@@ -110,6 +135,7 @@ var pushCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(pushCmd)
 	pushCmd.Flags().BoolVarP(&DryRun, "dryrun", "d", false, "dry run")
+	pushCmd.Flags().StringVarP(&PidFile, "pidfile", "f", "", "PID file")
 }
 
 func intersect(arrs ...[]string) []string {
@@ -144,10 +170,22 @@ func intersect(arrs ...[]string) []string {
 	return intersection
 }
 
-func contains(values []string, value string) bool {
-	for _, x := range values {
-		if x == value {
-			return true
+func contains(values interface{}, value interface{}) bool {
+	tempArr := reflect.ValueOf(values)
+	length := tempArr.Len()
+
+	for i := 0; i < length; i++ {
+		switch t := value.(type) {
+		case int32:
+			if tempArr.Index(i).Interface().(int32) == value.(int32) {
+				return true
+			}
+		case string:
+			if tempArr.Index(i).Interface().(string) == value.(string) {
+				return true
+			}
+		default:
+			log.Errorf("%T type not handled", t)
 		}
 	}
 	return false
