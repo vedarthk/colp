@@ -1,0 +1,13 @@
+package: github.com/vedarthk/colp
+import:
+- package: github.com/mitchellh/go-homedir
+- package: github.com/spf13/cobra
+- package: github.com/spf13/viper
+- package: github.com/aws/aws-sdk-go
+  version: ~1.8.41
+  subpackages:
+  - aws
+- package: github.com/shirou/gopsutil
+  version: ~2.17.5
+- package: github.com/sirupsen/logrus
+  version: ~1.0.0
