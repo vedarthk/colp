@@ -2,11 +2,10 @@ FROM golang:1.8.3
 
 RUN curl https://glide.sh/get | sh
 
-VOLUME /go/src/app
+COPY . /go/src/github.com/vedarthk/colp
 
-WORKDIR /code
+WORKDIR /go/src/github.com/vedarthk/colp
 
-COPY docker-entrypoint.sh /usr/bin/
-RUN chmod +x /usr/bin/docker-entrypoint.sh
+RUN glide --debug install && go-wrapper install
 
-ENTRYPOINT ["docker-entrypoint.sh"]
+ENTRYPOINT ["colp"]
