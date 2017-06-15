@@ -23,12 +23,18 @@ import (
 )
 
 var cfgFile string
+var showVersion bool
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   "colp",
 	Short: "push metric to cloudwatch",
 	Long:  "",
+	Run: func(cmd *cobra.Command, args []string) {
+		if showVersion {
+			fmt.Println("colp v0.0.1")
+		}
+	},
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.
@@ -50,7 +56,7 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	RootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "show version")
 }
 
 // initConfig reads in config file and ENV variables if set.
