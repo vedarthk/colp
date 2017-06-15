@@ -1,3 +1,5 @@
 .idea
 .glide
-
+colp-linux*
+colp-osx*
+pid.file
